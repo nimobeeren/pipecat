@@ -41,20 +41,31 @@ class SmallWebRTCRequest:
 
 
 @dataclass
-class SmallWebRTCPatchRequest:
-    """Small WebRTC transport session arguments for the runner.
+class IceCandidate:
+    """The remote ice candidate object received from the peer connection.
 
     Parameters:
-        pc_id: Identifier for the peer connection.
         candidate: The ice candidate patch SDP string (Session Description Protocol).
         sdp_mid: The SDP mid for the candidate patch.
         sdp_mline_index: The SDP mline index for the candidate patch.
     """
 
-    pc_id: str
     candidate: str
     sdp_mid: str
     sdp_mline_index: int
+
+
+@dataclass
+class SmallWebRTCPatchRequest:
+    """Small WebRTC transport session arguments for the runner.
+
+    Parameters:
+        pc_id: Identifier for the peer connection.
+        candidates: A list of ICE candidate patches.
+    """
+
+    pc_id: str
+    candidates: List[IceCandidate]
 
 
 class ConnectionMode(Enum):
@@ -222,11 +233,11 @@ class SmallWebRTCRequestHandler:
         if not peer_connection:
             raise HTTPException(status_code=404, detail="Peer connection not found")
 
-        candidate = candidate_from_sdp(request.candidate)
-        candidate.sdpMid = request.sdp_mid
-        candidate.sdpMLineIndex = request.sdp_mline_index
-
-        await peer_connection.add_ice_candidate(candidate)
+        for c in request.candidates:
+            candidate = candidate_from_sdp(c.candidate)
+            candidate.sdpMid = c.sdp_mid
+            candidate.sdpMLineIndex = c.sdp_mline_index
+            await peer_connection.add_ice_candidate(candidate)
 
     async def close(self):
         """Clear the connection map."""
